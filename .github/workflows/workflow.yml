@@ -1,0 +1,57 @@
+name: Deploy to AWS EC2 using Terraform and Ansible
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Store Private Key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key.pem
+          chmod 600 ~/.ssh/private_key.pem
+      - name: Set Up Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+      - name: Get EC2 Public DNS
+        run: echo "EC2_PUBLIC_DNS=$(terraform output -raw ec2_connection_url)" >> $GITHUB_ENV
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+      - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: False
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+          FRONTEND_PORT: ${{ secrets.FRONTEND_PORT }}
+        run: |
+          ansible-playbook \
+          -i "$EC2_PUBLIC_DNS," \
+          playbook.yml \
+          --user ubuntu \
+          --private-key ~/.ssh/private_key.pem \
+          --extra-vars "postgres_user=$POSTGRES_USER postgres_password=$POSTGRES_PASSWORD postgres_db=$POSTGRES_DB backend_port=$BACKEND_PORT frontend_port=$FRONTEND_PORT"

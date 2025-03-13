@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: postgres
+    networks:
+      - assessment
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init_sql_scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5432:5432'
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    networks:
+      - assessment
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      CONNECTION_STRING: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - '${BACKEND_PORT}:${BACKEND_PORT}'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    networks:
+      - assessment
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      API_URL: http://backend:${BACKEND_PORT}/data
+    ports:
+      - '${FRONTEND_PORT}:${FRONTEND_PORT}'
+
+volumes:
+  db_data:
+
+networks:
+  assessment:
+    driver: bridge
