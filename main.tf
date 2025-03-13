@@ -18,3 +18,8 @@ resource "aws_instance" "ubuntu" {
     Name = "Andy Ubuntu"
   }
 }
+
+output "ec2_connection_url" {
+  value       = aws_instance.ubuntu.public_dns
+  description = "Public DNS of the EC2 instance"
+}
