@@ -27,3 +27,18 @@ jobs:
               run: echo "EC2_PUBLIC_DNS=$(terraform output -raw ec2_connection_url)" >> $GITHUB_ENV
             - name: Print EC2 Public DNS
               run: echo $EC2_PUBLIC_DNS
+            - name: Set Up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.13'
+            - name: Install Ansible
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install ansible
+            - name: Run Ansible Playbook
+              run: |
+                  ansible-playbook
+                    -i "$EC2_PUBLIC_DNS," playbook.yaml
+                    --user ubuntu
+                    --private-key {{ secret.AWS_SSH_KEY }}
+                    --extra-vars "postgres_user={{ secret.POSTGRES_USER }} postgres_password={{ secret.POSTGRES_PASSWORD }} postgres_db={{ secret.POSTGRES_DB }} backend_port={{ secret.BACKEND_PORT }} frontend_port={{ secret.FRONTEND_PORT }}"
