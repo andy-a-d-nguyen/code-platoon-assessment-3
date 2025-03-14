@@ -46,13 +46,20 @@ resource "aws_instance" "ubuntu" {
   }
 
   provisioner "local-exec" {
-    command = <<EOT
-      echo "Checking EC2 liveness..."
-      while ! nc -zv ${aws_instance.ubuntu.public_ip} 22; do
-        echo "Waiting for EC2 instance to respond on port 22..."
+    command = <<-EOT
+      echo "Checking EC2 liveness on port 22..."
+      i=1
+      while [ $i -le 48 ]; do
+        if nc -zv ${aws_instance.ubuntu.public_ip} 22; then
+          echo "EC2 instance is live and responding on port 22!"
+          exit 0
+        fi
+        echo "Attempt $i: Waiting for EC2 instance to respond..."
         sleep 5
+        i=$((i+1))
       done
-      echo "EC2 instance is live!"
+      echo "EC2 instance is not responding after 48 attempts."
+      exit 1
     EOT
   }
 }
