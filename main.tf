@@ -49,7 +49,7 @@ resource "aws_instance" "ubuntu" {
     command = <<-EOT
       echo "Checking EC2 liveness on port 22..."
       i=1
-      while [ $i -le 48 ]; do
+      while [ $i -le 12 ]; do
         if nc -zv ${aws_instance.ubuntu.public_ip} 22; then
           echo "EC2 instance is live and responding on port 22!"
           exit 0
@@ -58,7 +58,7 @@ resource "aws_instance" "ubuntu" {
         sleep 5
         i=$((i+1))
       done
-      echo "EC2 instance is not responding after 48 attempts."
+      echo "EC2 instance is not responding after 12 attempts."
       exit 1
     EOT
   }
